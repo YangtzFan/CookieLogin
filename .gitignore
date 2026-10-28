@@ -1,0 +1,28 @@
+# Login credentials and temporary QR codes
+output/
+my-cookies/
+cookie*.txt
+cookies*.json
+qrcode.*
+.cookie-*
+.qr-*
+*.har
+*.log
+.env
+.env.*
+
+# Local dependencies and caches
+.venv/
+.bootstrap/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Build artifacts and editor metadata
+dist/
+build/
+*.tar.gz
+*.zip
+.DS_Store
+.vscode/
+.idea/
