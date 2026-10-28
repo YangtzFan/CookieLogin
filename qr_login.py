@@ -5,6 +5,7 @@ Independent implementation using only Python's standard library. No account
 information is sent anywhere except official Baidu HTTPS endpoints.
 """
 import argparse
+import base64
 import contextlib
 import http.cookiejar
 import json
@@ -71,6 +72,38 @@ def run(args):
         with contextlib.suppress(FileNotFoundError):
             fd_path.unlink()
     token = '/' + secrets.token_urlsafe(24)
+    image_type = ('image/png' if image.startswith(b'\x89PNG') else
+                  'image/jpeg' if image.startswith(b'\xff\xd8') else 'image/gif')
+    image_data = base64.b64encode(image).decode('ascii')
+    preview_html = ('''<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>百度网盘扫码登录 · CookieLogin</title>
+<style>
+:root { color-scheme: only light; background: #fff; color: #17202a; }
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; min-height: 100dvh; padding: 24px;
+       display: grid; place-items: center; background: #fff;
+       font-family: system-ui, sans-serif; }
+main { width: 100%; max-width: 480px; text-align: center; }
+h1 { margin: 0 0 12px; font-size: 24px; }
+p { margin: 12px 0; line-height: 1.6; color: #4b5563; }
+.qr { display: inline-block; max-width: 100%; padding: 24px;
+      background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; }
+img { display: block; width: 288px; max-width: 100%; height: auto;
+      background: #fff; image-rendering: pixelated; }
+</style>
+</head>
+<body><main>
+<h1>百度网盘扫码登录</h1>
+<p>请用百度网盘 App 扫码，并在手机上确认登录。</p>
+<div class="qr"><img alt="百度网盘登录二维码" src="data:''' + image_type +
+                    ';base64,' + image_data + '''"></div>
+<p>二维码过期后，请重新运行程序获取新二维码。</p>
+</main></body></html>''').encode('utf-8')
 
     class Preview(BaseHTTPRequestHandler):
         def log_message(self, *_):
@@ -81,12 +114,12 @@ def run(args):
                 self.send_error(404)
                 return
             self.send_response(200)
-            self.send_header('Content-Type', content_type if content_type.startswith('image/') else 'image/png')
-            self.send_header('Content-Length', str(len(image)))
+            self.send_header('Content-Type', 'text/html; charset=utf-8')
+            self.send_header('Content-Length', str(len(preview_html)))
             self.send_header('Cache-Control', 'no-store')
             self.send_header('Referrer-Policy', 'no-referrer')
             self.end_headers()
-            self.wfile.write(image)
+            self.wfile.write(preview_html)
 
     try:
         server = ThreadingHTTPServer(('127.0.0.1', args.port), Preview)
@@ -158,7 +191,7 @@ def run(args):
 
 def main():
     parser = argparse.ArgumentParser(description='无需浏览器的百度网盘扫码登录（仅 Python 标准库）')
-    parser.add_argument('--version', action='version', version='CookieLogin 1.0.0')
+    parser.add_argument('--version', action='version', version='CookieLogin 1.0.1')
     parser.add_argument('--port', type=int, default=8766)
     parser.add_argument('--timeout', type=int, default=300)
     parser.add_argument('--output', type=Path, default=Path(__file__).resolve().parent / 'output')
